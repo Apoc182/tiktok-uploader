@@ -30,7 +30,7 @@ from tiktok_uploader.proxy_auth_extension.proxy_auth_extension import proxy_is_w
 
 
 def upload_video(filename=None, description='', cookies='', schedule: datetime.datetime = None, username='',
-                 password='', sessionid=None, cookies_list=None, cookies_str=None, proxy=None, *args, **kwargs):
+                 password='', sessionid=None, cookies_list=None, cookies_str=None, proxy=None, private=False, *args, **kwargs):
     """
     Uploads a single TikTok video.
 
@@ -57,12 +57,13 @@ def upload_video(filename=None, description='', cookies='', schedule: datetime.d
             videos=[ { 'path': filename, 'description': description, 'schedule': schedule } ],
             auth=auth,
             proxy=proxy,
+            private=private,
             *args, **kwargs
         )
 
 
 def upload_videos(videos: list = None, auth: AuthBackend = None, proxy: dict = None, browser='chrome',
-                  browser_agent=None, on_complete=None, headless=False, num_retries : int = 1, skip_split_window=False, *args, **kwargs):
+                  browser_agent=None, on_complete=None, headless=False, num_retries : int = 1, skip_split_window=False, private=False, *args, **kwargs):
     """
     Uploads multiple videos to TikTok
 
@@ -154,6 +155,7 @@ def upload_videos(videos: list = None, auth: AuthBackend = None, proxy: dict = N
             complete_upload_form(driver, path, description, schedule,
                                  num_retries=num_retries, 
                                  skip_split_window=skip_split_window,
+                                 private=private,
                                  headless=headless,*args, **kwargs)
         except Exception as exception:
             logger.error('Failed to upload %s', path)
@@ -169,7 +171,7 @@ def upload_videos(videos: list = None, auth: AuthBackend = None, proxy: dict = N
     return failed
 
 
-def complete_upload_form(driver, path: str, description: str, schedule: datetime.datetime, skip_split_window: bool, headless=False,  *args, **kwargs) -> None:
+def complete_upload_form(driver, path: str, description: str, schedule: datetime.datetime, skip_split_window: bool, private: bool, headless=False,  *args, **kwargs) -> None:
     """
     Actually uploads each video
 
@@ -200,6 +202,8 @@ def complete_upload_form(driver, path: str, description: str, schedule: datetime
     if not skip_split_window:
         _remove_split_window(driver)
     _set_interactivity(driver, **kwargs)
+    if private:
+        _set_private(driver)
     _set_description(driver, description)
     if schedule:
         _set_schedule_video(driver, schedule)
@@ -348,6 +352,12 @@ def _set_description(driver, description: str) -> None:
         print('Failed to set description: ', exception)
         _clear(desc)
         desc.send_keys(saved_description)
+
+def _set_private(driver) -> None:
+    who_can_view_box = driver.find_element(By.XPATH, config['selectors']['upload']['visibility'])
+    who_can_view_box.click()
+    private = driver.find_element(By.XPATH, config['selectors']['upload']['only_you'])
+    private.click()
 
 def _clear(element) -> None:
     """
